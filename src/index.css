@@ -1,0 +1,199 @@
+@import '@fontsource-variable/vazirmatn/wght.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+/* ============================================================
+   DNSQUEEN — Dark Bat Purple
+   Deep royal purple on near-black, violet as the only brand light.
+   Green never returns as a brand colour; state is carried by text,
+   icon and shape as well as hue.
+   ============================================================ */
+
+:root {
+  /* --- surfaces (night sky, almost black) --- */
+  --ink: #0b0912;
+  --plate: #14111d;
+  --plate-2: #1b1626;
+  --plate-3: #221c30;
+  --rule: #30243f;
+  --rule-strong: #453459;
+
+  /* --- brand: bat violet --- */
+  --violet: #8b5cf6;
+  --violet-hi: #a78bfa;
+  --violet-soft: #c4b5fd;
+  --violet-deep: #6d3fd4;
+  --violet-ink: #0f0a1c;
+
+  /* --- text --- */
+  --chalk: #f2eefa;
+  --chalk-dim: #9c91b4;
+  --chalk-faint: #7b7194;
+
+  /* --- state (never used as brand) --- */
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --danger: #fb7185;
+  --info: #7dd3fc;
+
+  /* --- category tags --- */
+  --tag-private: #fbbf24;
+  --tag-special: #7dd3fc;
+  --tag-v6: #c4b5fd;
+
+  --r-sm: 7px;
+  --r-md: 11px;
+  --r-lg: 15px;
+
+  --f-ui: 'Vazirmatn Variable', 'Vazirmatn', system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--chalk);
+  font-family: var(--f-ui);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100%;
+}
+
+body {
+  /* Two very restrained pools of violet light — atmosphere, not gradient noise. */
+  background-image:
+    radial-gradient(760px 420px at 88% -8%, rgba(139, 92, 246, 0.13), transparent 68%),
+    radial-gradient(620px 380px at 4% 4%, rgba(109, 63, 212, 0.08), transparent 70%);
+  background-attachment: fixed;
+}
+
+@media (max-width: 620px) {
+  body {
+    background-image: radial-gradient(520px 300px at 92% -6%, rgba(139, 92, 246, 0.1), transparent 70%);
+  }
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--violet-hi);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.34);
+  color: var(--chalk);
+}
+
+/* Numbers and addresses must stay LTR even inside an RTL page. */
+.mono,
+.out__ip,
+textarea.input {
+  font-family: var(--f-mono);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+textarea::-webkit-scrollbar,
+.output-pane::-webkit-scrollbar,
+.log::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+textarea::-webkit-scrollbar-thumb,
+.output-pane::-webkit-scrollbar-thumb,
+.log::-webkit-scrollbar-thumb {
+  background: var(--rule-strong);
+  border-radius: 999px;
+}
+textarea::-webkit-scrollbar-track,
+.output-pane::-webkit-scrollbar-track,
+.log::-webkit-scrollbar-track {
+  background: transparent;
+}
+textarea,
+.output-pane,
+.log {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* ============================================================
+   Light theme — "Daylight bat": the same violet identity on paper.
+   Only tokens change; no component needs a second stylesheet.
+   ============================================================ */
+:root[data-theme='light'] {
+  --ink: #f7f5fb;
+  --plate: #ffffff;
+  --plate-2: #f0ecf7;
+  --plate-3: #e9e2f4;
+  --rule: #ddd4ea;
+  --rule-strong: #c3b2dd;
+
+  --violet: #6d28d9;
+  --violet-hi: #7c3aed;
+  --violet-soft: #8b5cf6;
+  --violet-deep: #5b21b6;
+  --violet-ink: #ffffff;
+
+  --chalk: #21172f;
+  --chalk-dim: #64576f;
+  --chalk-faint: #7a6c86;
+
+  --ok: #15803d;
+  --warn: #b45309;
+  --danger: #be123c;
+  --info: #0369a1;
+
+  --tag-private: #b45309;
+  --tag-special: #0369a1;
+  --tag-v6: #6d28d9;
+
+  color-scheme: light;
+}
+
+:root[data-theme='light'] body {
+  background-image:
+    radial-gradient(760px 420px at 88% -8%, rgba(139, 92, 246, 0.14), transparent 68%),
+    radial-gradient(620px 380px at 4% 4%, rgba(109, 63, 212, 0.08), transparent 70%);
+}
