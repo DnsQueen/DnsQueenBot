@@ -1,322 +1,639 @@
-DNSQUEEN 👑
+````markdown
+# DNSQUEEN
 
-A Privacy-Focused IP Extraction & Management Tool with an Optional Telegram Bot.
+A lightweight IP extraction tool for the web and Telegram.
 
-DNSQUEEN is a lightweight IP extraction and management application designed to work as a standalone web app and an optional Telegram Bot.
+DNSQUEEN extracts IPv4 and IPv6 addresses from text and `.txt` files, removes duplicates, and produces a clean list you can copy or save. It provides a browser-based interface and an optional Telegram bot.
 
-It supports IPv4, IPv6, text processing, duplicate removal, sorting, TXT file processing, and Telegram integration — all deployable on your own Cloudflare account.
+---
 
-✨ Features
+## Contents
 
-Web Application
+- [Overview](#overview)
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Run locally](#run-locally)
+- [Deploy to Cloudflare Pages](#deploy-to-cloudflare-pages)
+- [Set up the Telegram bot](#set-up-the-telegram-bot)
+- [Connect the Telegram Mini App](#connect-the-telegram-mini-app)
+- [Test the deployment](#test-the-deployment)
+- [Configuration reference](#configuration-reference)
+- [Troubleshooting](#troubleshooting)
+- [Project structure](#project-structure)
+- [Development and contributions](#development-and-contributions)
+- [Privacy and security](#privacy-and-security)
+- [License](#license)
 
-- Extract IPv4 and IPv6 addresses from text.
-- Process and extract IP addresses from TXT files.
-- Remove duplicate IP addresses.
-- Sort extracted addresses.
-- Copy individual IP addresses or all results.
-- Export results as TXT.
-- Support for IPv4 and IPv6.
-- Private and special-use IP filtering options.
-- Port handling options.
-- CIDR mask handling.
+---
+
+## Overview
+
+DNSQUEEN has two entry points:
+
+1. **Web application** — a browser-based interface for extracting and managing IP addresses.
+2. **Telegram bot** — accepts text messages and `.txt` documents, extracts IP addresses, and returns the result.
+
+The web application can be deployed and used independently. The Telegram bot is optional.
+
+DNSQUEEN is not a DNS resolver, proxy, VPN, IP scanner, or connectivity tester. It extracts IP address strings from supplied content; it does not test whether an address is online or reachable.
+
+## Features
+
+### Web application
+
+- Extract IPv4 and IPv6 addresses from pasted text.
+- Import text files.
+- Remove duplicate addresses.
+- Preserve input order or sort the results.
+- Copy individual addresses or the complete result.
+- Export extracted addresses as TXT.
+- Filter private and special-use addresses.
+- Handle ports and CIDR notation according to the selected options.
 - Persian and English interface.
-- Persian RTL layout.
+- Right-to-left layout for Persian.
 - Dark and light themes.
-- Responsive design for desktop and mobile.
-- Runs independently without requiring a backend.
+- Responsive layout for mobile and desktop.
 
-Telegram Bot
+### Telegram bot
 
-DNSQUEEN also includes an optional Telegram Bot powered by Cloudflare Pages Functions.
+- Accept IP-containing text messages.
+- Accept `.txt` document uploads.
+- Extract IPv4 and IPv6 addresses.
+- Remove duplicates while preserving their original order.
+- Return manageable results as a Telegram message.
+- Send larger results as a TXT document.
+- Provide `/start` and `/help` commands.
 
-The bot can:
+The bot uses the same extraction engine as the web application.
 
-- Extract IPv4 and IPv6 addresses from messages.
-- Process uploaded ".txt" files.
-- Remove duplicate IP addresses.
-- Return extracted IP addresses in a Telegram message.
-- Handle "/start" and "/help" commands.
-- Provide helpful responses for unknown commands.
+---
 
-The Telegram Bot is optional. You can use the web application without configuring or deploying a bot.
+## How it works
 
-🏗️ Architecture
+```text
+                         DNSQUEEN
+                            |
+              +-------------+-------------+
+              |                           |
+         Web application             Telegram bot
+              |                           |
+       Browser interface             Telegram user
+              |                           |
+       IP extraction engine          Telegram Bot API
+              |                           |
+       Result in browser             Cloudflare Pages
+                                          |
+                                    Pages Function
+                                          |
+                                    IP extraction
+                                          |
+                                  Telegram Bot API
+                                          |
+                                  Message or TXT file
+````
 
-DNSQUEEN consists of two independent parts:
+### Web application
 
-1. Frontend — Web Application
+The web interface runs in the visitor's browser. Text entered into the web application is processed locally by the frontend. The web extraction workflow does not require a DNSQUEEN application server or database.
 
-- React
-- TypeScript
-- Vite
-- Client-side IP extraction and processing
-- No central backend or database required
+### Telegram bot
 
-2. Optional Telegram Bot
+Telegram sends bot updates to a Cloudflare Pages Function at:
 
-- Cloudflare Pages Functions
-- Telegram Bot API
-- Webhook-based updates
-- Cloudflare encrypted environment secrets
+```text
+https://YOUR-PROJECT.pages.dev/api/telegram
+```
 
-The frontend and Telegram Bot are deployed together on Cloudflare Pages, but they operate independently.
+The Function validates the webhook secret, processes the incoming message, extracts addresses, and sends the result through the Telegram Bot API.
 
-Each user can deploy their own instance using their own Cloudflare account and their own Telegram Bot token.
+The Telegram integration requires a Cloudflare Pages deployment, two encrypted secrets, and a working Telegram bot.
 
-No shared bot token, central server, or central database is required.
+### Requirements
 
-🚀 Deployment
+### For local development
 
-Requirements
+* Git
 
-- A GitHub account
-- A Cloudflare account
-- A Telegram account (only if you want to enable the Telegram Bot)
-- A Telegram Bot token from BotFather (only for bot deployment)
+* Node.js
 
-1. Fork the Repository
+* npm
 
-Fork this repository to your own GitHub account:
+### For deployment
 
-https://github.com/DnsQueen/DnsQueenBot
+* GitHub account
 
-You can also clone it locally:
+* Cloudflare account
 
+* A Cloudflare Pages project connected to this repository
+
+### Additional requirements for the Telegram bot
+
+* Telegram account
+
+* Bot token created through [@BotFather](https://t.me/BotFather?utm_source=chatgpt.com)
+
+* Cloudflare Pages Functions enabled through Git-based deployment
+
+* Cloudflare Pages production secrets
+
+You do not need to configure the Telegram integration if you only want to deploy the web application.
+
+### Run locally
+
+Clone the repository:
+
+```bash
 git clone https://github.com/DnsQueen/DnsQueenBot.git
 cd DnsQueenBot
+```
+
+Install dependencies:
+
+```bash
 npm install
+```
 
-2. Deploy to Cloudflare Pages
+Start the development server:
 
-The recommended deployment method is Cloudflare Pages with Git integration.
+```bash
+npm run dev
+```
 
-1. Open the Cloudflare Dashboard.
-2. Go to Workers & Pages.
-3. Select Create application.
-4. Choose Pages.
-5. Connect your GitHub account.
-6. Select your forked DNSQUEEN repository.
-7. Select the branch you want to deploy.
+Vite prints the local development address in the terminal. Open that address in your browser.
 
-For the original development branch, use:
+### Run checks
 
-"feature/telegram-bot"
+Run the test suite:
 
-Configure the build settings:
+```bash
+npm test
+```
 
-Setting| Value
-Framework preset| Vite
-Production branch| "feature/telegram-bot"
-Root directory| "/"
-Build command| "npm run build"
-Build output directory| "dist"
+Run lint:
 
-Save and deploy.
+```bash
+npm run lint
+```
 
-Cloudflare Pages will build the frontend and deploy the Pages Functions from the repository's "functions/" directory.
+Create a production build:
 
-Important: Do not use a simple static ZIP upload or drag-and-drop deployment if you want the Telegram Bot to work. Static-only uploads may deploy the frontend without compiling and deploying the "functions/" directory.
-
-The Git integration method is recommended because it handles both the frontend and Pages Functions.
-
-3. Optional: Deploy with Wrangler
-
-You can also build and deploy the project using Wrangler.
-
-Install dependencies and build:
-
-npm install
+```bash
 npm run build
+```
 
-Deploy using:
+The production frontend is generated in:
 
-npx wrangler pages deploy dist
+```text
+dist/
+```
 
-Make sure the "functions/" directory is present at the project root alongside "dist/" when deploying. Verify that your Wrangler version and deployment configuration support Pages Functions before relying on this method.
+The local Vite server is intended for frontend development. It does not automatically reproduce the deployed Cloudflare Pages webhook environment or provide production Telegram secrets.
 
-🤖 Telegram Bot Setup
+### Deploy to Cloudflare Pages
 
-The Telegram Bot is optional.
+The recommended deployment method is connecting the GitHub repository directly to Cloudflare Pages.
 
-You can skip this entire section if you only want to use the web application.
+This deploys both the built frontend and the Pages Functions directory.
 
-1. Create a Telegram Bot
+### 1\. Connect GitHub
 
-1. Open Telegram.
-2. Search for "@BotFather" (https://t.me/BotFather).
-3. Send "/newbot".
-4. Follow the instructions.
-5. Copy the bot token.
+* Sign in to the [Cloudflare Dashboard](https://dash.cloudflare.com/?utm_source=chatgpt.com).
 
-Never publish your bot token or commit it to GitHub.
+* Open Workers & Pages.
 
-2. Configure Cloudflare Secrets
+* Select Create application.
 
-Open your Cloudflare Dashboard:
+* Choose Pages and connect to Git.
 
-Workers & Pages → Your DNSQUEEN Project → Settings → Variables and Secrets
+* Authorize access to GitHub if requested.
 
-Add the following encrypted secrets:
+* Select the `DnsQueenBot` repository.
 
-Variable| Description
-"BOT_TOKEN"| Your Telegram Bot API token
-"TELEGRAM_WEBHOOK_SECRET"| A private secret used to authenticate webhook requests
+### 2\. Configure the build
 
-Both values must be configured as encrypted secrets, not exposed as frontend variables.
+Use the following settings:
 
-Generate a strong webhook secret using:
+| Setting                | Value         |
+| ---------------------- | ------------- |
+| Framework preset       | Vite          |
+| Production branch      | main          |
+| Root directory         | /             |
+| Build command          | npm run build |
+| Build output directory | dist          |
 
+Make sure the production branch matches the branch you intend to deploy. In the original DNSQUEEN repository, the production branch is `main`.
+
+Save the settings and start the first deployment.
+
+### 3\. Check the deployment
+
+After a successful deployment, Cloudflare assigns a Pages address similar to:
+
+```text
+https://YOUR-PROJECT.pages.dev
+```
+
+Open it in a browser and verify that the application loads.
+
+If you are also deploying the Telegram bot, its endpoint should be:
+
+```text
+https://YOUR-PROJECT.pages.dev/api/telegram
+```
+
+Important: Do not deploy only the contents of `dist/` if you need the Telegram bot. The webhook implementation is in the repository's `functions/` directory and must be deployed as a Cloudflare Pages Function.
+
+### Set up the Telegram bot
+
+The Telegram bot is an optional part of DNSQUEEN.
+
+### 1\. Create a bot with BotFather
+
+* Open [@BotFather](https://t.me/BotFather?utm_source=chatgpt.com).
+
+* Send:
+
+```text
+/newbot
+```
+
+* Follow the instructions.
+
+* Choose a display name and a unique username.
+
+* Save the bot token securely.
+
+The token is a credential. Anyone who obtains it may be able to control your bot.
+
+Never put the token in source code, commit it to GitHub, or expose it in frontend environment variables.
+
+### 2\. Add the required Cloudflare secrets
+
+Open your Pages project:
+
+Cloudflare Dashboard → Workers & Pages → your project → Settings → Variables and Secrets
+
+In the Production environment, add the following values as encrypted secrets:
+
+| Variable                | Description                                           |
+| ----------------------- | ----------------------------------------------------- |
+| BOT_TOKEN               | Token issued by BotFather                             |
+| TELEGRAM_WEBHOOK_SECRET | Secret used to authenticate Telegram webhook requests |
+
+Generate a strong webhook secret on your own machine:
+
+```bash
 openssl rand -hex 32
+```
 
-Copy the generated value and save it as "TELEGRAM_WEBHOOK_SECRET".
+Use the generated value for `TELEGRAM_WEBHOOK_SECRET`.
 
-Save your Telegram Bot token as "BOT_TOKEN".
+Do not use a `VITE_` prefix for these values. They must remain server-side secrets and must not be included in the browser bundle.
 
-After adding or changing secrets, redeploy the project if required by Cloudflare Pages.
+Save the settings.
 
-3. Register the Telegram Webhook
+If you add or change secrets after deployment, trigger a new deployment so the Function uses the updated configuration.
 
-Your webhook endpoint is:
+### 3\. Register the webhook
 
-https://YOUR-DOMAIN.pages.dev/api/telegram
+The webhook connects Telegram to your deployed Pages Function.
 
-Replace "YOUR-DOMAIN.pages.dev" with your actual Cloudflare Pages domain.
+Use the actual Pages domain assigned to your project. Do not leave `YOUR-PROJECT` in the command.
 
-Register the webhook using the following command:
+For example:
 
+```text
+https://dnsqueenbot.pages.dev/api/telegram
+```
+
+To avoid putting credentials directly into the command, enter them through hidden shell prompts:
+
+```bash
 read -rsp "Telegram Bot Token: " BOT_TOKEN
 echo
+```
+
+```bash
 read -rsp "Webhook Secret: " WEBHOOK_SECRET
 echo
+```
 
-curl -fsS -X POST \
-  "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
+Register the webhook:
+
+```bash
+curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
   -H "Content-Type: application/json" \
-  -d "{\"url\":\"https://YOUR-DOMAIN.pages.dev/api/telegram\",\"secret_token\":\"${WEBHOOK_SECRET}\",\"allowed_updates\":[\"message\"]}"
+  -d "{\"url\":\"https://YOUR-PROJECT.pages.dev/api/telegram\",\"secret_token\":\"${WEBHOOK_SECRET}\",\"allowed_updates\":[\"message\"]}"
+```
 
+Replace the example domain with your actual Pages domain.
+
+After Telegram confirms that the webhook was registered, clear the temporary shell variables:
+
+```bash
 unset BOT_TOKEN WEBHOOK_SECRET
+```
 
-Replace the webhook URL with your actual domain before running the command.
+A successful response looks like this:
 
-The token and webhook secret are entered without being displayed in the terminal.
-
-A successful Telegram response should contain:
-
+```json
 {
   "ok": true,
   "result": true,
   "description": "Webhook was set"
 }
+```
 
-4. Test Your Bot
+The `allowed_updates` setting above enables incoming messages, which are the updates used by the current bot workflow.
 
-Open your bot in Telegram and test:
+### 4\. Verify the webhook endpoint
 
-- "/start"
-- "/help"
-- "/unknown"
-- Send a text message containing IPv4 and IPv6 addresses.
-- Upload a ".txt" file containing IP addresses.
+Opening the endpoint in a browser sends a GET request. The webhook is designed for POST requests from Telegram.
 
-The bot should process the input and return the extracted IP addresses.
+A POST request without the correct Telegram secret header should return:
 
-📱 Telegram Mini App (Optional)
+```json
+{
+  "ok": false,
+  "error": "unauthorized"
+}
+```
 
-The web application can also be connected to your Telegram Bot as a Mini App.
+An HTTP `401` response without the secret header is expected. It indicates that the endpoint is enforcing its authentication check; it is not, by itself, proof that the complete bot workflow is working.
 
-This is optional and separate from the bot's message-processing functionality.
+### Connect the Telegram Mini App
 
-To configure it:
+The Mini App is configured separately from the bot webhook.
 
-1. Open "@BotFather" (https://t.me/BotFather).
-2. Select your bot.
-3. Open the Mini Apps configuration options.
-4. Set your deployed Cloudflare Pages URL as the Mini App URL.
-5. Save the configuration.
+If you want users to open the DNSQUEEN web application from Telegram:
 
-Your web application can then be opened inside Telegram.
+* Open [@BotFather](https://t.me/BotFather?utm_source=chatgpt.com).
 
-The Mini App does not require the Telegram Bot webhook to perform its client-side IP extraction functionality.
+* Select your bot.
 
-🔐 Security & Privacy
+* Open its Mini App configuration.
 
-DNSQUEEN is designed to avoid unnecessary data collection.
+* Configure the Main Mini App or Menu Button, depending on the entry point you want to provide.
 
-- IP extraction in the web application is performed locally in the browser.
-- No central database is required.
-- Each deployment uses its own Cloudflare account.
-- Each bot deployment uses its own Telegram Bot token.
-- Bot tokens must remain in Cloudflare encrypted secrets.
-- Webhook requests are authenticated using "TELEGRAM_WEBHOOK_SECRET".
-- Webhook request bodies are limited to 1 MB.
-- Uploaded TXT files are limited to 2 MB.
-- Only ".txt" files are accepted by the bot.
-- Telegram API errors are not returned directly to users.
-- File paths are validated before processing.
+* Set the application URL to your deployed HTTPS Pages address.
 
-Important: When using the Telegram Bot, messages and files are processed through Telegram and your own Cloudflare deployment. Do not send sensitive information that you do not want processed by those services.
+For example:
 
-🛠️ Local Development
+```text
+https://dnsqueenbot.pages.dev
+```
 
-Clone the repository:
+Save the configuration and open the bot in Telegram to test it.
 
-git clone https://github.com/DnsQueen/DnsQueenBot.git
-cd DnsQueenBot
+The Mini App loads the web application. Its frontend extraction features do not depend on the Telegram webhook.
 
-Install dependencies:
+### Test the deployment
 
-npm install
+### Test the web application
 
-Start the development server:
+* Open the deployed Pages address.
 
-npm run dev
+* Paste a text containing IPv4 and IPv6 addresses.
 
-Run tests:
+* Check that valid addresses are extracted.
 
-npm test
+* Check duplicate removal.
 
-Run the production build:
+* Try sorting and the available filters.
 
-npm run build
+* Test copying and TXT export.
 
-The Telegram Bot requires Cloudflare Pages Functions and configured environment secrets. The ordinary Vite development server alone does not provide the complete production webhook environment.
+* Switch between Persian and English.
 
-📁 Project Structure
+* Switch between dark and light themes.
 
+* Test the interface on a mobile screen.
+
+### Test the Telegram bot
+
+Open a private chat with your bot and send:
+
+```text
+/start
+```
+
+Then:
+
+```text
+/help
+```
+
+Send this sample input:
+
+```text
+Google: 8.8.8.8
+Cloudflare: 1.1.1.1
+Google IPv6: 2001:4860:4860::8888
+Duplicate: 8.8.8.8
+Invalid: 999.999.999.999
+```
+
+The expected extracted addresses are:
+
+```text
+8.8.8.8
+1.1.1.1
+2001:4860:4860::8888
+```
+
+The invalid address should not appear, and the duplicate should appear only once.
+
+Also test by uploading a `.txt` file containing several addresses.
+
+Depending on the result size, the bot returns the extracted list as a message or sends it as a TXT document.
+
+### Configuration reference
+
+| Name                    | Required for | Purpose                                        |
+| ----------------------- | ------------ | ---------------------------------------------- |
+| BOT_TOKEN               | Telegram bot | Authenticates requests to the Telegram Bot API |
+| TELEGRAM_WEBHOOK_SECRET | Telegram bot | Validates incoming webhook requests            |
+
+Both values belong in Cloudflare Pages server-side secrets.
+
+They are not required to run the browser application locally or deploy the web application without the Telegram bot.
+
+### Input limits
+
+The Telegram bot currently enforces these limits:
+
+| Item                        | Limit |
+| --------------------------- | ----- |
+| Text input                  | 2 MiB |
+| Uploaded TXT file           | 2 MiB |
+| Webhook request body        | 1 MiB |
+| Supported uploaded document | .txt  |
+
+The web application's frontend limits and behavior should be checked in the application source rather than assumed to match the Telegram bot's limits.
+
+### Troubleshooting
+
+### The website works, but the Telegram bot does not respond
+
+Check the following:
+
+* The Pages deployment completed successfully.
+
+* The webhook URL points to the correct project.
+
+* `BOT_TOKEN` is configured as a Production secret.
+
+* `TELEGRAM_WEBHOOK_SECRET` matches the value used when registering the webhook.
+
+* The webhook is registered with Telegram.
+
+You can inspect the webhook status using Telegram's `getWebhookInfo` method.
+
+### Telegram reports a webhook error
+
+Check the Pages Function logs in Cloudflare.
+
+Verify that the URL is correct and that the Function is deployed at:
+
+```text
+/api/telegram
+```
+
+Also verify that the secret configured in Cloudflare is identical to the webhook secret registered with Telegram.
+
+### The endpoint returns HTTP 401
+
+This is expected when a request does not contain the correct Telegram webhook secret header.
+
+Check that the secret in Cloudflare and the `secret_token` used in `setWebhook` match exactly.
+
+### The website returns 404 for the bot endpoint
+
+Check that:
+
+* The repository is deployed through Cloudflare Pages Git integration.
+
+* The `functions/` directory is present in the deployed branch.
+
+* The deployment completed after the Function was added.
+
+A static-only upload of the `dist/` directory does not include the repository's Pages Function source.
+
+### The Mini App does not open
+
+Check the URL configured in BotFather.
+
+It must be the deployed HTTPS application address, not a local development address.
+
+### The bot does not accept a document
+
+The current bot workflow accepts `.txt` documents and enforces a 2 MiB input limit.
+
+Check the file extension and size before testing again.
+
+### Project structure
+
+The repository is organized around the browser application, the shared extraction engine, and the Cloudflare webhook.
+
+```text
 DnsQueenBot/
 ├── functions/
 │   └── api/
 │       └── telegram.ts
+├── public/
 ├── src/
 │   ├── components/
+│   ├── engine/
 │   ├── lib/
-│   │   └── telegram-bot.ts
 │   ├── App.tsx
 │   └── main.tsx
-├── public/
-├── index.html
 ├── package.json
 ├── tsconfig.json
 └── vite.config.ts
+```
 
-📋 Limits
+Key areas:
 
-Feature| Limit
-Telegram webhook request body| 1 MB
-Telegram TXT file input| 2 MB
-Accepted Telegram file type| ".txt"
+| Path                      | Responsibility                          |
+| ------------------------- | --------------------------------------- |
+| src/engine/               | IP parsing and extraction logic         |
+| src/components/           | Web interface components                |
+| src/lib/                  | Shared utilities and Telegram bot logic |
+| functions/api/telegram.ts | Cloudflare Pages webhook endpoint       |
+| src/App.tsx               | Main application interface              |
 
-These limits apply to the Telegram Bot processing functionality.
+For exact implementation details, use the source files in the repository as the reference.
 
-📄 License
+### Development and contributions
 
-This project is licensed under the MIT License.
+Contributions are welcome. Keep changes focused and verify them before opening a pull request.
 
-You are free to use, modify, distribute, and deploy your own instance under the terms of the license.
+### Suggested workflow
 
----
+Fork the repository, clone your fork, and create a dedicated branch:
 
-DNSQUEEN 👑
+```bash
+git clone https://github.com/YOUR-GITHUB-USERNAME/DnsQueenBot.git
+cd DnsQueenBot
 
-Your IPs. Your tools. Your infrastructure.
+npm install
+
+git switch -c feature/your-change
+```
+
+Before committing, run:
+
+```bash
+npm test
+npm run lint
+npm run build
+```
+
+Commit and push your branch:
+
+```bash
+git add .
+git commit -m "Describe the change"
+git push -u origin feature/your-change
+```
+
+Then open a Pull Request against the original repository's `main` branch.
+
+### Pull request guidelines
+
+A useful pull request should include:
+
+* A clear description of the problem being addressed.
+
+* A concise explanation of the implementation.
+
+* Tests for changed behavior where applicable.
+
+* Screenshots for visible interface changes.
+
+* Any deployment or configuration changes that maintainers need to know about.
+
+Do not include API tokens, webhook secrets, private configuration files, or user data in commits or pull requests.
+
+### Privacy and security
+
+* The web application's extraction workflow runs in the browser.
+
+* The Telegram bot processes messages and documents sent to the bot through Telegram.
+
+* Telegram bot credentials must remain server-side.
+
+* The webhook checks Telegram's configured secret token.
+
+* Do not commit `.env` files or credentials.
+
+* Do not publish bot tokens or webhook secrets in issues, screenshots, logs, or support messages.
+
+* Anyone deploying their own copy is responsible for their Cloudflare account, Telegram bot, secrets, and deployment configuration.
+
+DNSQUEEN does not claim that an extracted IP address is reachable, safe, active, or associated with a particular service. Extraction is a text-processing operation.
+
+### License
+
+DNSQUEEN is distributed under the MIT License. See LICENSE for the full license text.
