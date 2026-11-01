@@ -198,3 +198,27 @@ describe('Telegram bot commands and input limits', () => {
     expect(payload.text).not.toContain('SECRET_INTERNAL_ERROR');
   });
 });
+
+describe('Unknown Telegram commands', () => {
+  it('shows help guidance instead of treating unknown commands as IP input', async () => {
+    const fetcher = vi.fn().mockImplementation(() =>
+      Promise.resolve(telegramOk({ message_id: 1 }))
+    );
+
+    await processTelegramUpdate({
+      update_id: 14,
+      message: {
+        message_id: 14,
+        chat: { id: 42 },
+        text: '/unknown',
+      },
+    }, env, fetcher as unknown as typeof fetch);
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    const [, init] = fetcher.mock.calls[0] as [string, RequestInit];
+    const payload = JSON.parse(String(init.body));
+
+    expect(payload.text).toContain('/help');
+  });
+});

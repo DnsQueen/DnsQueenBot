@@ -309,6 +309,16 @@ async function handleCommand(
     return true;
   }
 
+  if (normalized.startsWith('/')) {
+    await sendText(
+      token,
+      chatId,
+      'این دستور شناخته‌شده نیست. برای مشاهده راهنما دستور /help را بفرست.',
+      fetcher,
+    );
+    return true;
+  }
+
   return false;
 }
 
