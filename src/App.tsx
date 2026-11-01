@@ -224,14 +224,29 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand__mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="26" height="26" fill="none">
-              <path d="M16 2.5 29 9.6v12.8L16 29.5 3 22.4V9.6z" stroke="currentColor" strokeWidth="1.4" />
+            <svg viewBox="0 0 32 32" width="28" height="28" fill="none">
               <path
-                d="M16 8v16M8.4 12.2l15.2 7.6M23.6 12.2 8.4 19.8"
+                d="M5.5 10.2 10.7 15.1 16 6.3 21.3 15.1 26.5 10.2 24.4 23.5H7.6L5.5 10.2Z"
+                fill="currentColor"
+                fillOpacity=".12"
                 stroke="currentColor"
-                strokeWidth="1.1"
-                opacity=".55"
+                strokeWidth="1.45"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
+              <path
+                d="M8.2 26H23.8M9 23.5V26M23 23.5V26"
+                stroke="currentColor"
+                strokeWidth="1.35"
+                strokeLinecap="round"
+              />
+              <path
+                d="M16 11.1 18.5 13.6 16 16.1 13.5 13.6 16 11.1Z"
+                fill="currentColor"
+              />
+              <circle cx="5.5" cy="9.2" r="1.35" fill="currentColor"/>
+              <circle cx="16" cy="5.1" r="1.35" fill="currentColor"/>
+              <circle cx="26.5" cy="9.2" r="1.35" fill="currentColor"/>
             </svg>
           </span>
           <div className="brand__text">
