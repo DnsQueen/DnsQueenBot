@@ -82,3 +82,119 @@ describe('Telegram update processing', () => {
     expect(JSON.parse(String(init.body)).text).toContain('۲ مگابایت');
   });
 });
+
+describe('Telegram bot commands and input limits', () => {
+  it('handles /start and /help without running IP extraction', async () => {
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(telegramOk({ message_id: 1 })));
+
+    await processTelegramUpdate({
+      update_id: 10,
+      message: { message_id: 10, chat: { id: 42 }, text: '/start' },
+    }, env, fetcher as unknown as typeof fetch);
+
+    await processTelegramUpdate({
+      update_id: 11,
+      message: { message_id: 11, chat: { id: 42 }, text: '/help' },
+    }, env, fetcher as unknown as typeof fetch);
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+
+    const first = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body));
+    const second = JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body));
+
+    expect(first.text).toContain('DNSQUEEN');
+    expect(second.text).toContain('/start');
+  });
+
+  it('rejects an oversized webhook body even without Content-Length', async () => {
+    const secret = env.TELEGRAM_WEBHOOK_SECRET;
+    const oversized = new TextEncoder().encode(
+      `{"update_id":1,"padding":"${'x'.repeat(1024 * 1024)}"}`
+    );
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(oversized);
+        controller.close();
+      },
+    });
+
+    const request = new Request('https://example.test/api/telegram', {
+      method: 'POST',
+      headers: {
+        'X-Telegram-Bot-Api-Secret-Token': secret,
+      },
+      body: stream,
+      duplex: 'half',
+    } as RequestInit);
+
+    const response = await handleTelegramWebhook(request, env);
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: 'payload_too_large',
+    });
+  });
+
+  it('rejects a file that exceeds 2 MB while downloading', async () => {
+    const oversized = new Uint8Array(2 * 1024 * 1024 + 1);
+
+    const downloadResponse = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(oversized);
+          controller.close();
+        },
+      }),
+    );
+
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(telegramOk({ file_path: 'documents/test.txt' }))
+      .mockResolvedValueOnce(downloadResponse)
+      .mockResolvedValueOnce(telegramOk({ message_id: 1 }));
+
+    await processTelegramUpdate({
+      update_id: 12,
+      message: {
+        message_id: 12,
+        chat: { id: 42 },
+        document: {
+          file_id: 'file-id',
+          file_name: 'test.txt',
+          file_size: 100,
+        },
+      },
+    }, env, fetcher as unknown as typeof fetch);
+
+    expect(fetcher).toHaveBeenCalledTimes(3);
+
+    const [, init] = fetcher.mock.calls[2] as [string, RequestInit];
+    const payload = JSON.parse(String(init.body));
+
+    expect(payload.text).toContain('۲ مگابایت');
+  });
+
+  it('does not expose internal errors to Telegram users', async () => {
+    const fetcher = vi.fn()
+      .mockRejectedValueOnce(new Error('SECRET_INTERNAL_ERROR'))
+      .mockResolvedValueOnce(telegramOk({ message_id: 1 }));
+
+    await processTelegramUpdate({
+      update_id: 13,
+      message: {
+        message_id: 13,
+        chat: { id: 42 },
+        text: '8.8.8.8',
+      },
+    }, env, fetcher as unknown as typeof fetch);
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+
+    const [, init] = fetcher.mock.calls[1] as [string, RequestInit];
+    const payload = JSON.parse(String(init.body));
+
+    expect(payload.text).toContain('دوباره تلاش کن');
+    expect(payload.text).not.toContain('SECRET_INTERNAL_ERROR');
+  });
+});
