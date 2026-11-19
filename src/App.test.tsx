@@ -10,6 +10,7 @@ const $theme = () => screen.getByTestId('theme-toggle');
 const $input = () => screen.getByLabelText('Raw text to extract addresses from');
 const $region = () => document.querySelector('.out') as HTMLElement;
 const $switch = (name: string) => screen.getByRole('switch', { name });
+const openAdvanced = () => fireEvent.click(screen.getByRole('button', { name: 'Advanced settings' }));
 
 const mount = () => render(<App />);
 const toEnglish = () => fireEvent.click($lang());
@@ -44,6 +45,7 @@ describe('language', () => {
     expect(screen.getByRole('button', { name: 'Copy all' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Download TXT' })).toBeInTheDocument();
     expect($switch('Hide private')).toBeInTheDocument();
+    openAdvanced();
     expect($switch('Hide special-use')).toBeInTheDocument();
     expect(screen.getByText(/Runs entirely in your browser/)).toBeInTheDocument();
   });
@@ -54,8 +56,7 @@ describe('language', () => {
     expect($region().textContent).toMatch(/Nothing to clean yet/);
     paste('999.1.1.1 and 1.2.3.4.5');
     expect($region().textContent).toMatch(/No valid address/);
-    fireEvent.click(screen.getByRole('button', { name: 'Download TXT' }));
-    expect(screen.getByRole('status').textContent).toMatch(/Nothing to download yet/);
+    expect(screen.getByRole('button', { name: 'Download TXT' })).toBeDisabled();
   });
 
   it('never touches the data when the language changes', () => {
@@ -146,6 +147,7 @@ describe('controls actually drive the engine', () => {
     fireEvent.click($switch('Hide private'));
     expect($region().textContent).not.toMatch(/192\.168\.1\.1/);
     expect($region().textContent).toMatch(/203\.0\.113\.14/);
+    openAdvanced();
     fireEvent.click($switch('Hide special-use'));
     expect($region().textContent).not.toMatch(/203\.0\.113\.14/);
     expect($region().textContent).toMatch(/8\.8\.8\.8/);
@@ -155,6 +157,7 @@ describe('controls actually drive the engine', () => {
     mount();
     toEnglish();
     fireEvent.click($theme());
+    openAdvanced();
     fireEvent.click($switch('Keep port'));
     paste('9.9.9.9:53\n1.1.1.1:53\n9.9.9.9:53\n1.1.1.1:443');
     const text = $region().textContent ?? '';

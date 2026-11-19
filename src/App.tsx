@@ -5,6 +5,7 @@ import { usePreferences } from './hooks/usePreferences';
 import { copyText, CopyError, downloadText, txtFilename } from './lib/clipboard';
 import { haptic, setTelegramChrome } from './lib/telegram';
 import { locale, type TranslationKey } from './i18n/translations';
+import type { ExtractedIp } from './engine/ip-parser';
 
 const MAX_FILE_BYTES = 2_000_000;
 const RENDER_CAP = 400;
@@ -35,6 +36,13 @@ const CATEGORY_KEY: Record<string, TranslationKey | undefined> = {
   documentation: 'cat.documentation',
   multicast: 'cat.multicast',
   reserved: 'cat.reserved',
+};
+
+const FORMAT_HINT: Record<Settings['outputFormat'], TranslationKey> = {
+  newline: 'format.hint.newline',
+  comma: 'format.hint.comma',
+  space: 'format.hint.space',
+  json: 'format.hint.json',
 };
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
@@ -103,11 +111,19 @@ function Segmented<T extends string>({
   );
 }
 
+/** A row's identity across parses. With ports kept, the same address on two
+ *  ports is two rows; with ports stripped, it is one — so the port only
+ *  belongs in the key when keepPort is on. */
+function rowKey(ip: ExtractedIp, keepPort: boolean): string {
+  return keepPort && ip.port !== undefined ? `${ip.baseIp}:${ip.port}` : ip.baseIp;
+}
+
 export default function App() {
   const [source, setSource] = useState('');
   const [dragging, setDragging] = useState(false);
   const [copied, setCopied] = useState(false);
   const [busyFile, setBusyFile] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const { lang, theme, toggleLang, toggleTheme, t } = usePreferences();
   const { settings, update, reset } = usePersistentSettings();
   const { toast, push } = useToast();
@@ -144,8 +160,57 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [copied]);
 
+  /* Rows that appeared since the previous parse stay lit amber until the
+   * next keystroke. The first paste lights nothing: the whole board is new. */
+  const prevKeysRef = useRef<Set<string>>(new Set());
+  const [freshKeys, setFreshKeys] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const keys = new Set(rows.map(ip => rowKey(ip, settings.keepPort)));
+    const prev = prevKeysRef.current;
+    const fresh =
+      prev.size === 0 ? new Set<string>() : new Set([...keys].filter(k => !prev.has(k)));
+    /* Amber marks the exception, not the rule: when more than half the board
+     * is fresh, the board was replaced wholesale and the flip cascade alone
+     * carries it — lighting everything would say nothing. */
+    if (fresh.size > keys.size / 2) fresh.clear();
+    prevKeysRef.current = keys;
+    setFreshKeys(fresh);
+  }, [rows, settings.keepPort]);
+
+  /* FIRST VIEWPORT: the input field is focused on load — on devices with a
+   * fine pointer only, so a phone never opens its keyboard uninvited. */
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(pointer: fine)').matches
+    ) {
+      inputRef.current?.focus({ preventScroll: true });
+    }
+  }, []);
+
+  const undoAction = useCallback(
+    (previous: string) => ({
+      label: t('action.restore'),
+      run: () => {
+        setSource(previous);
+        push(t('toast.restored'));
+      },
+    }),
+    [push, t],
+  );
+
   const ingestFile = useCallback(
     async (file: File) => {
+      const isText =
+        file.type === '' ||
+        file.type === 'text/plain' ||
+        file.type === 'text/csv' ||
+        /\.(txt|csv|list)$/i.test(file.name);
+      if (!isText) {
+        push(t('toast.fileType'), 'error');
+        return;
+      }
       if (file.size > MAX_FILE_BYTES) {
         push(t('toast.fileTooBig', { size: (file.size / 1_000_000).toFixed(1) }), 'error');
         return;
@@ -154,19 +219,19 @@ export default function App() {
       try {
         const text = await file.text();
         if (!text.trim()) {
-          push(t('toast.fileEmpty'), 'warn');
+          push(t('toast.fileEmpty'), 'warn', undoAction(source));
           setSource('');
           return;
         }
         setSource(text);
-        push(t('toast.fileLoaded', { name: file.name }));
+        push(t('toast.fileLoaded', { name: file.name }), 'ok', undoAction(source));
       } catch {
         push(t('toast.fileUnreadable'), 'error');
       } finally {
         setBusyFile(null);
       }
     },
-    [push, t],
+    [push, t, source, undoAction],
   );
 
   const onDrop = useCallback(
@@ -195,16 +260,27 @@ export default function App() {
     }
   }, [output, push, t]);
 
+  const handleCopyRow = useCallback(
+    async (ip: string) => {
+      try {
+        await copyText(ip);
+        haptic('ok');
+        push(t('toast.copiedRow', { ip }));
+      } catch {
+        haptic('error');
+        push(t('toast.copyFailed'), 'error');
+      }
+    },
+    [push, t],
+  );
+
   const handleDownload = useCallback(() => {
-    if (!output) {
-      push(t('toast.nothingToDownload'), 'warn');
-      return;
-    }
+    if (!output) return;
     const ext = settings.outputFormat === 'json' ? 'json' : 'txt';
     const name = txtFilename('dnsqueen').replace(/\.txt$/, `.${ext}`);
     downloadText(name, output, false);
-    push(t('toast.saved', { name }));
-  }, [output, settings.outputFormat, push, t]);
+    push(t('toast.saved', { name, n: rows.length }));
+  }, [output, settings.outputFormat, push, t, rows.length]);
 
   const patch = useCallback(
     <K extends keyof Settings>(key: K, value: Settings[K]) => update(key, value),
@@ -215,6 +291,19 @@ export default function App() {
     reset();
     push(t('toast.reset'));
   }, [reset, push, t]);
+
+  const handleClear = useCallback(() => {
+    if (!source.trim()) return;
+    const previous = source;
+    setSource('');
+    push(t('toast.cleared'), 'warn', undoAction(previous));
+  }, [source, push, t, undoAction]);
+
+  const handleSample = useCallback(() => {
+    const previous = source;
+    setSource(SAMPLE);
+    push(t('toast.sampleLoaded'), 'ok', undoAction(previous));
+  }, [source, push, t, undoAction]);
 
   const shown = rows.slice(0, RENDER_CAP);
   const isEmptyInput = !source.trim();
@@ -292,16 +381,13 @@ export default function App() {
             <span>{theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}</span>
           </button>
         </div>
-
-        <div className="meter" aria-live="polite">
-          <span className="meter__n">{rows.length}</span>
-          <span className="meter__u">{t('meter.unique')}</span>
-          <span className="meter__sep" aria-hidden="true" />
-          <span className="meter__sub">{result.stats.executionTimeMs.toFixed(1)} ms</span>
-        </div>
       </header>
 
       <section className="strip" aria-label={t('summary.aria')}>
+        <div className="strip__cell strip__cell--big">
+          <b>{rows.length}</b>
+          <span>{t('meter.unique')}</span>
+        </div>
         <div className="strip__cell">
           <b>{result.stats.totalFound}</b>
           <span>{t('strip.found')}</span>
@@ -312,7 +398,11 @@ export default function App() {
         </div>
         <div className="strip__cell">
           <b>{result.stats.privateFiltered}</b>
-          <span>{t('strip.privateRemoved')}</span>
+          <span>{t('strip.removedPrivate')}</span>
+        </div>
+        <div className="strip__cell">
+          <b>{result.stats.specialFiltered}</b>
+          <span>{t('strip.removedSpecial')}</span>
         </div>
         <div className="strip__cell">
           <b>
@@ -323,8 +413,15 @@ export default function App() {
           <span>{t('strip.v4v6')}</span>
         </div>
       </section>
-      {result.stats.invalidCidrCount > 0 && (
-        <p className="strip__note">{t('strip.invalidCidr', { n: result.stats.invalidCidrCount })}</p>
+      {(rows.length > 0 || result.stats.invalidCidrCount > 0) && (
+        <p className="strip__note">
+          {result.stats.executionTimeMs.toFixed(1)} ms
+          {result.stats.invalidCidrCount > 0 && (
+            <span className="strip__note--bad">
+              {' '}· {t('strip.invalidCidr', { n: result.stats.invalidCidrCount })}
+            </span>
+          )}
+        </p>
       )}
 
       <main className="grid">
@@ -337,13 +434,13 @@ export default function App() {
               <button type="button" className="link" onClick={() => fileInput.current?.click()}>
                 {busyFile ? t('action.reading') : t('action.openTxt')}
               </button>
-              <button type="button" className="link" onClick={() => setSource(SAMPLE)}>
+              <button type="button" className="link" onClick={handleSample}>
                 {t('action.sample')}
               </button>
               <button
                 type="button"
                 className="link link--quiet"
-                onClick={() => setSource('')}
+                onClick={handleClear}
                 disabled={isEmptyInput}
               >
                 {t('action.clear')}
@@ -363,6 +460,7 @@ export default function App() {
             onDrop={onDrop}
           >
             <textarea
+              ref={inputRef}
               className="input"
               spellCheck={false}
               autoCapitalize="off"
@@ -393,19 +491,14 @@ export default function App() {
             <h2>
               {t('pane.output')} <span className="pane__meta">{t('pane.lines', { n: rows.length })}</span>
             </h2>
-            <div className="pane__actions">
-              <button
-                type="button"
-                className="btn btn--ghost"
-                onClick={() => void handleCopy()}
-                disabled={!output}
-              >
-                {copied ? t('action.copied') : t('action.copyAll')}
-              </button>
-              <button type="button" className="link" onClick={handleDownload}>
-                {t('action.downloadTxt')}
-              </button>
-            </div>
+          </div>
+          <div className="board__head" aria-hidden="true">
+            <span>#</span>
+            <span>{t('board.col.address')}</span>
+            <span>{t('board.col.version')}</span>
+            <span>{t('board.col.category')}</span>
+            <span>{t('board.col.status')}</span>
+            <span />
           </div>
           <div className="out" dir="ltr" role="region" aria-label={t('out.region')}>
             {rows.length === 0 ? (
@@ -414,20 +507,38 @@ export default function App() {
               <ol className="out__list">
                 {shown.map((ip, i) => {
                   const catKey = CATEGORY_KEY[ip.category];
+                  const key = rowKey(ip, settings.keepPort);
                   return (
                     <li
-                      key={`${ip.baseIp}-${ip.port ?? 0}-${i}`}
-                      className={classNames('out__row', ip.category !== 'public' && 'is-private')}
+                      key={`${key}-${i}`}
+                      className={classNames(
+                        'out__row',
+                        ip.category !== 'public' && 'is-private',
+                        freshKeys.has(key) && 'is-new',
+                      )}
                       style={{ ['--i' as string]: Math.min(i, 24) } as CSSProperties}
                     >
                       <span className="out__idx" aria-hidden="true">
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <span className="out__ip">{ip.clean}</span>
-                      <span className="out__tag">
-                        {ip.version === 6 ? t('tag.v6') : t('tag.v4')}
-                        {ip.category !== 'public' && catKey ? ` · ${t(catKey)}` : ''}
+                      <span className="out__ver">{ip.version === 6 ? t('tag.v6') : t('tag.v4')}</span>
+                      <span className="out__cat">{catKey ? t(catKey) : ip.category}</span>
+                      <span className="out__status">
+                        {freshKeys.has(key) ? t('board.status.changed') : t('board.status.filed')}
                       </span>
+                      <button
+                        type="button"
+                        className="rowcopy"
+                        aria-label={t('action.copyRow', { ip: ip.clean })}
+                        title={t('action.copyRow', { ip: ip.clean })}
+                        onClick={() => void handleCopyRow(ip.clean)}
+                      >
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+                          <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
+                          <path d="M10.5 5.5v-2a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3.5v5A1.5 1.5 0 0 0 4 10h1.5" stroke="currentColor" strokeWidth="1.3" />
+                        </svg>
+                      </button>
                     </li>
                   );
                 })}
@@ -437,54 +548,105 @@ export default function App() {
               <p className="out__more">{t('out.more', { n: rows.length - RENDER_CAP })}</p>
             )}
           </div>
+          <div className="pane__foot">
+            <button
+              type="button"
+              className="btn btn--amber"
+              onClick={() => void handleCopy()}
+              disabled={!output}
+            >
+              {copied ? t('action.copied') : t('action.copyAll')}
+            </button>
+            <button type="button" className="btn btn--steel" onClick={handleDownload} disabled={!output}>
+              {settings.outputFormat === 'json' ? t('action.downloadJson') : t('action.downloadTxt')}
+            </button>
+          </div>
         </div>
       </main>
 
       <section className="controls" aria-label={t('controls.aria')}>
         <div className="controls__row">
-          <Toggle label={t('toggle.ipv4')} hint={t('toggle.ipv4.hint')} checked={settings.includeIpv4} onChange={v => patch('includeIpv4', v)} />
-          <Toggle label={t('toggle.ipv6')} hint={t('toggle.ipv6.hint')} checked={settings.includeIpv6} onChange={v => patch('includeIpv6', v)} />
-          <Toggle label={t('toggle.dedupe')} hint={t('toggle.dedupe.hint')} checked={settings.removeDuplicates} onChange={v => patch('removeDuplicates', v)} />
-          <Toggle label={t('toggle.keepPort')} hint={t('toggle.keepPort.hint')} checked={settings.keepPort} onChange={v => patch('keepPort', v)} />
-          <Toggle label={t('toggle.hidePrivate')} hint={t('toggle.hidePrivate.hint')} checked={settings.excludePrivate} onChange={v => patch('excludePrivate', v)} />
-          <Toggle label={t('toggle.hideSpecial')} hint={t('toggle.hideSpecial.hint')} checked={settings.excludeSpecial} onChange={v => patch('excludeSpecial', v)} />
+          <div className="ctl">
+            <Toggle label={t('toggle.ipv4')} hint={t('toggle.ipv4.hint')} checked={settings.includeIpv4} onChange={v => patch('includeIpv4', v)} />
+            <span className="ctl__hint">{t('toggle.ipv4.hint')}</span>
+          </div>
+          <div className="ctl">
+            <Toggle label={t('toggle.ipv6')} hint={t('toggle.ipv6.hint')} checked={settings.includeIpv6} onChange={v => patch('includeIpv6', v)} />
+            <span className="ctl__hint">{t('toggle.ipv6.hint')}</span>
+          </div>
+          <div className="ctl">
+            <Toggle label={t('toggle.dedupe')} hint={t('toggle.dedupe.hint')} checked={settings.removeDuplicates} onChange={v => patch('removeDuplicates', v)} />
+            <span className="ctl__hint">{t('toggle.dedupe.hint')}</span>
+          </div>
+          <div className="ctl">
+            <Toggle label={t('toggle.hidePrivate')} hint={t('toggle.hidePrivate.hint')} checked={settings.excludePrivate} onChange={v => patch('excludePrivate', v)} />
+            <span className="ctl__hint">{t('toggle.hidePrivate.hint')}</span>
+          </div>
           <button type="button" className="link link--quiet reset" onClick={handleReset}>
             {t('action.reset')}
           </button>
         </div>
-        <div className="controls__row controls__row--seg">
-          <Segmented
-            label={t('seg.order')}
-            value={settings.sortMode}
-            onChange={v => patch('sortMode', v)}
-            options={[
-              { value: 'original', label: t('order.original') },
-              { value: 'numeric', label: t('order.numeric') },
-              { value: 'reverse', label: t('order.reverse') },
-            ]}
-          />
-          <Segmented
-            label={t('seg.cidr')}
-            value={settings.cidrMode}
-            onChange={v => patch('cidrMode', v)}
-            options={[
-              { value: 'strip-mask', label: t('cidr.strip') },
-              { value: 'keep-mask', label: t('cidr.keep') },
-              { value: 'drop', label: t('cidr.drop') },
-            ]}
-          />
-          <Segmented
-            label={t('seg.format')}
-            value={settings.outputFormat}
-            onChange={v => patch('outputFormat', v)}
-            options={[
-              { value: 'newline', label: t('fmt.newline') },
-              { value: 'comma', label: t('fmt.comma') },
-              { value: 'space', label: t('fmt.space') },
-              { value: 'json', label: t('fmt.json') },
-            ]}
-          />
-        </div>
+        <button
+          type="button"
+          className="adv-toggle"
+          aria-expanded={advancedOpen}
+          onClick={() => setAdvancedOpen(v => !v)}
+        >
+          <span>{t('controls.advanced')}</span>
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
+            <path d="M3.5 6 8 10.5 12.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {advancedOpen && (
+          <div className="controls__adv">
+            <div className="controls__row">
+              <div className="ctl">
+                <Toggle label={t('toggle.keepPort')} hint={t('toggle.keepPort.hint')} checked={settings.keepPort} onChange={v => patch('keepPort', v)} />
+                <span className="ctl__hint">{t('toggle.keepPort.hint')}</span>
+              </div>
+              <div className="ctl">
+                <Toggle label={t('toggle.hideSpecial')} hint={t('toggle.hideSpecial.hint')} checked={settings.excludeSpecial} onChange={v => patch('excludeSpecial', v)} />
+                <span className="ctl__hint">{t('toggle.hideSpecial.hint')}</span>
+              </div>
+            </div>
+            <div className="controls__row controls__row--seg">
+              <Segmented
+                label={t('seg.order')}
+                value={settings.sortMode}
+                onChange={v => patch('sortMode', v)}
+                options={[
+                  { value: 'original', label: t('order.original') },
+                  { value: 'numeric', label: t('order.numeric') },
+                  { value: 'reverse', label: t('order.reverse') },
+                ]}
+              />
+              <Segmented
+                label={t('seg.cidr')}
+                value={settings.cidrMode}
+                onChange={v => patch('cidrMode', v)}
+                options={[
+                  { value: 'strip-mask', label: t('cidr.strip') },
+                  { value: 'keep-mask', label: t('cidr.keep') },
+                  { value: 'drop', label: t('cidr.drop') },
+                ]}
+              />
+              <div className="seg-wrap">
+                <Segmented
+                  label={t('seg.format')}
+                  value={settings.outputFormat}
+                  onChange={v => patch('outputFormat', v)}
+                  options={[
+                    { value: 'newline', label: t('fmt.newline') },
+                    { value: 'comma', label: t('fmt.comma') },
+                    { value: 'space', label: t('fmt.space') },
+                    { value: 'json', label: t('fmt.json') },
+                  ]}
+                />
+                <p className="seg__hint">{t(FORMAT_HINT[settings.outputFormat])}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <footer className="foot">
@@ -494,7 +656,18 @@ export default function App() {
 
       {toast && (
         <div className={classNames('toast', `toast--${toast.tone}` as Tone)} role="status" key={toast.id}>
-          {toast.text}
+          <span>{toast.text}</span>
+          {toast.action && (
+            <button
+              type="button"
+              className="toast__action"
+              onClick={() => {
+                toast.action?.run();
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
     </div>

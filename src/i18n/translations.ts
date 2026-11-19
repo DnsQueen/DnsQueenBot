@@ -26,9 +26,17 @@ const fa = {
   'summary.aria': 'خلاصهٔ پردازش',
   'strip.found': 'پیداشده',
   'strip.duplicates': 'تکراری',
-  'strip.privateRemoved': 'خصوصی حذف‌شده',
+  'strip.removedPrivate': 'حذف خصوصی',
+  'strip.removedSpecial': 'حذف ویژه',
   'strip.v4v6': 'v4 / v6',
   'strip.invalidCidr': '{n} پیشوند CIDR نامعتبر رد شد',
+
+  'board.col.address': 'آدرس',
+  'board.col.version': 'نسخه',
+  'board.col.category': 'دسته',
+  'board.col.status': 'وضعیت',
+  'board.status.filed': 'ثبت شد',
+  'board.status.changed': 'تازه',
 
   'pane.source': 'ورودی',
   'pane.output': 'خروجی',
@@ -41,7 +49,10 @@ const fa = {
   'action.copyAll': 'کپی همه',
   'action.copied': 'کپی شد ✓',
   'action.downloadTxt': 'دریافت TXT',
+  'action.downloadJson': 'دریافت JSON',
   'action.reset': 'بازنشانی',
+  'action.restore': 'بازگردانی',
+  'action.copyRow': 'کپی {ip}',
 
   'input.aria': 'متنی که آدرس‌ها از آن استخراج می‌شوند',
   'input.placeholder':
@@ -93,23 +104,31 @@ const fa = {
   'fmt.space': 'با فاصله',
   'fmt.json': 'JSON',
   'format.hint.newline': 'یک آدرس در هر خط',
+  'format.hint.comma': 'با کاما جدا می‌شوند',
+  'format.hint.space': 'با فاصله جدا می‌شوند',
+  'format.hint.json': 'آرایهٔ JSON',
 
   'controls.aria': 'تنظیمات پردازش',
+  'controls.advanced': 'تنظیمات پیشرفته',
 
   'foot.privacy': 'همه‌چیز در مرورگر تو اجرا می‌شود — بدون آپلود، بدون ردیابی',
   'foot.version': 'v1.1',
 
   'toast.copied': 'در کلیپ‌بورد کپی شد',
+  'toast.copiedRow': 'کپی شد: {ip}',
   'toast.copyEmpty': 'چیزی برای کپی نیست.',
   'toast.copyBlocked': 'مرورگر اجازهٔ کپی نداد. متن را انتخاب و دستی کپی کن.',
   'toast.copyFailed': 'کپی در این مرورگر انجام نشد.',
-  'toast.saved': 'ذخیره شد: {name}',
-  'toast.nothingToDownload': 'هنوز چیزی برای دانلود نیست.',
+  'toast.saved': 'ذخیره شد: {name} ({n} ردیف)',
   'toast.fileTooBig': 'حجم فایل {size} مگابایت است — سقف ۲ مگابایت. متن را مستقیم پیست کن.',
   'toast.fileEmpty': 'این فایل خالی است — چیزی برای استخراج نیست.',
   'toast.fileUnreadable': 'فایل خوانده نشد. متن را مستقیم پیست کن.',
   'toast.fileLoaded': 'بارگذاری شد: {name}',
+  'toast.sampleLoaded': 'نمونه بارگذاری شد',
+  'toast.fileType': 'فقط فایل متنی (.txt، .csv) پذیرفته می‌شود.',
   'toast.reset': 'تنظیمات به حالت اولیه برگشت',
+  'toast.cleared': 'پاک شد',
+  'toast.restored': 'برگردانده شد',
 } as const;
 
 export type TranslationKey = keyof typeof fa;
@@ -128,9 +147,17 @@ const en: Record<TranslationKey, string> = {
   'summary.aria': 'Processing summary',
   'strip.found': 'found',
   'strip.duplicates': 'duplicates',
-  'strip.privateRemoved': 'private removed',
+  'strip.removedPrivate': 'private removed',
+  'strip.removedSpecial': 'special removed',
   'strip.v4v6': 'v4 / v6',
   'strip.invalidCidr': '{n} invalid CIDR prefix rejected',
+
+  'board.col.address': 'ADDRESS',
+  'board.col.version': 'VER',
+  'board.col.category': 'CAT',
+  'board.col.status': 'STATUS',
+  'board.status.filed': 'FILED',
+  'board.status.changed': 'CHANGED',
 
   'pane.source': 'Source',
   'pane.output': 'Output',
@@ -143,7 +170,10 @@ const en: Record<TranslationKey, string> = {
   'action.copyAll': 'Copy all',
   'action.copied': 'Copied ✓',
   'action.downloadTxt': 'Download TXT',
+  'action.downloadJson': 'Download JSON',
   'action.reset': 'reset',
+  'action.restore': 'Restore',
+  'action.copyRow': 'Copy {ip}',
 
   'input.aria': 'Raw text to extract addresses from',
   'input.placeholder':
@@ -194,23 +224,31 @@ const en: Record<TranslationKey, string> = {
   'fmt.space': 'spaces',
   'fmt.json': 'json',
   'format.hint.newline': 'one per line',
+  'format.hint.comma': 'separated by commas',
+  'format.hint.space': 'separated by spaces',
+  'format.hint.json': 'a JSON array',
 
   'controls.aria': 'Processing options',
+  'controls.advanced': 'Advanced settings',
 
   'foot.privacy': 'Runs entirely in your browser — no uploads, no tracking',
   'foot.version': 'v1.1',
 
   'toast.copied': 'Copied to clipboard',
+  'toast.copiedRow': 'Copied {ip}',
   'toast.copyEmpty': 'Nothing to copy.',
   'toast.copyBlocked': 'The browser blocked the clipboard. Select the text and copy it manually.',
   'toast.copyFailed': 'Copy failed in this browser.',
-  'toast.saved': 'Saved {name}',
-  'toast.nothingToDownload': 'Nothing to download yet.',
+  'toast.saved': 'Saved {name} ({n} rows)',
   'toast.fileTooBig': 'File is {size} MB — the limit is 2 MB. Paste the list instead.',
   'toast.fileEmpty': 'That file is empty — nothing to extract.',
   'toast.fileUnreadable': 'Could not read that file. Try pasting the text instead.',
   'toast.fileLoaded': 'Loaded {name}',
+  'toast.sampleLoaded': 'Sample loaded',
+  'toast.fileType': 'Only text files (.txt, .csv) are accepted.',
   'toast.reset': 'Settings are back to their defaults',
+  'toast.cleared': 'Cleared',
+  'toast.restored': 'Restored',
 };
 
 export const dictionaries: Record<Lang, Record<TranslationKey, string>> = { fa, en };

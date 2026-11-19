@@ -149,8 +149,10 @@ export function usePersistentSettings() {
   return { settings, update, reset };
 }
 
-/** A short-lived status line ("copied", "downloaded", an error). */
-export type Toast = { id: number; text: string; tone: 'ok' | 'warn' | 'error' };
+/** A short-lived status line ("copied", "downloaded", an error). An action
+ *  (e.g. Restore after Clear) keeps the toast up longer and adds a button. */
+export type ToastAction = { label: string; run: () => void };
+export type Toast = { id: number; text: string; tone: 'ok' | 'warn' | 'error'; action?: ToastAction };
 
 export function useToast(timeout = 2600) {
   const [toast, setToast] = useState<Toast | null>(null);
@@ -165,11 +167,11 @@ export function useToast(timeout = 2600) {
   }, []);
 
   const push = useCallback(
-    (text: string, tone: Toast['tone'] = 'ok') => {
+    (text: string, tone: Toast['tone'] = 'ok', action?: ToastAction) => {
       clear();
       counter.current += 1;
-      setToast({ id: counter.current, text, tone });
-      timer.current = window.setTimeout(() => setToast(null), timeout);
+      setToast({ id: counter.current, text, tone, action });
+      timer.current = window.setTimeout(() => setToast(null), action ? 6000 : timeout);
     },
     [clear, timeout],
   );
